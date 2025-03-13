@@ -1,0 +1,40 @@
+name: Kubectl commands
+
+on: 
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+      id-token: write   
+      contents: read    
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: configure aws credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: arn:aws:iam::430118834478:role/gh-actions-role
+        aws-region: "us-east-1"
+    - name: get eks credential 
+      run: aws eks update-kubeconfig --name eks-prod --region us-east-1 
+    - name: kubectl command
+      run: |
+        helm install arc \
+         --namespace arc-systems \
+         --create-namespace \
+         oci://ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set-controller
+        helm install arc-runner-set \
+          --namespace arc-runners \
+          --create-namespace \
+          --set githubConfigUrl="https://github.com/tcslabsfjbs" \
+          --set githubConfigSecret.github_token="${{ secrets.GH_PAT }}" \
+          oci://ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set
+        kubectl get po -A
+        kubect get ns
